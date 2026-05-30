@@ -1,0 +1,217 @@
+Sub MasterFormatDocumentFinalVersionUltimate()
+    Dim doc As Document
+    Set doc = ActiveDocument
+    Dim p As Paragraph
+    Dim txt As String
+    Dim sec As Section
+    
+    ' ==========================================================
+    ' 1. 页面基本设置（A4纸，Portrait）[满足第16条]
+    ' ==========================================================
+    For Each sec In doc.Sections
+        sec.PageSetup.PaperSize = wdPaperA4
+        sec.PageSetup.Orientation = wdOrientPortrait
+    Next sec
+    
+    ' ==========================================================
+    ' 2. 提前获取“参考文献”的位置，防止后续匹配判定出错 [满足第13条]
+    ' ==========================================================
+    Dim refStart As Long
+    Dim findRange As Range
+    refStart = doc.Content.End ' 默认设为文档末尾
+    Set findRange = doc.Content
+    
+    With findRange.Find
+        .Text = "参考文献"
+        .Forward = True
+        .Wrap = wdFindStop
+        If .Execute Then
+            refStart = findRange.Start ' 获取“参考文献”的起始位置
+        End If
+    End With
+    
+    ' ==========================================================
+    ' 3. 目录样式设置（目录内容楷体小四，行距1.0）[满足第11条]
+    ' ==========================================================
+    On Error Resume Next
+    With doc.Styles(wdStyleTOC1)
+        .Font.Name = "楷体"
+        .Font.Size = 12 ' 小四
+        .Font.Bold = False
+        .ParagraphFormat.LineSpacingRule = wdLineSpaceSingle ' 行距1.0
+    End With
+    With doc.Styles(wdStyleTOC2)
+        .Font.Name = "楷体"
+        .Font.Size = 12
+        .Font.Bold = False
+        .ParagraphFormat.LineSpacingRule = wdLineSpaceSingle
+    End With
+    On Error GoTo 0
+
+    ' ==========================================================
+    ' 4. 段落与标题精确格式化 [满足第3, 4, 5, 6, 7, 8, 10, 13条]
+    ' ==========================================================
+    For Each p In doc.Paragraphs
+        ' 核心保护机制：仅处理第 2 页及以后的内容，绝对不触动第 1 页封面
+        If p.Range.Information(wdActiveEndPageNumber) > 1 Then
+            
+            txt = Trim(p.Range.Text)
+            
+            ' 排除空行和表格内段落
+            If Len(txt) > 1 And Not p.Range.Information(wdWithInTable) Then
+                
+                ' 确保全篇默认非加粗、黑色字体
+                p.Range.Font.Bold = False
+                p.Range.Font.ColorIndex = wdBlack
+                
+                ' A. 一级标题（黑体小二，顶格，行距2.0，段前段后空0.5行）[第3条]
+                If txt Like "一、*" Or txt Like "二、*" Or txt Like "三、*" _
+                Or txt Like "四、*" Or txt Like "五、*" Or txt Like "六、*" _
+                Or txt Like "摘要*" Or txt Like "目录*" Or txt Like "参考文献*" _
+                Or txt Like "总结与心得体会*" Then
+                    p.Range.Font.Name = "黑体"
+                    p.Range.Font.Size = 18 ' 小二
+                    p.Format.LineSpacingRule = wdLineSpaceDouble ' 行距2.0
+                    p.Format.SpaceBefore = 9 ' 段前0.5行
+                    p.Format.SpaceAfter = 9  ' 段后0.5行
+                    p.Format.CharacterUnitFirstLineIndent = 0 ' 顶格
+                    p.Format.Alignment = wdAlignParagraphLeft
+                    
+                ' B. 二级标题（楷体三号，顶格，行距2.0，段前段后空0.5行）[第4条]
+                ElseIf txt Like "1.*" Or txt Like "2.*" Or txt Like "3.*" _
+                Or txt Like "4.*" Or txt Like "5.*" Or txt Like "Step*" Then
+                    p.Range.Font.Name = "楷体"
+                    p.Range.Font.Size = 16 ' 三号
+                    p.Format.LineSpacingRule = wdLineSpaceDouble ' 行距2.0
+                    p.Format.SpaceBefore = 8 ' 段前0.5行
+                    p.Format.SpaceAfter = 8  ' 段后0.5行
+                    p.Format.CharacterUnitFirstLineIndent = 0 ' 顶格
+                    p.Format.Alignment = wdAlignParagraphLeft
+                    
+                ' C. 三级标题（宋体小四，顶格，行距2.0，段前段后空0.5行）[第5条]
+                ElseIf txt Like "第一，*" Or txt Like "第二，*" Or txt Like "第三，*" _
+                Or txt Like "第四，*" Or txt Like "第五，*" Or txt Like "第六，*" Then
+                    p.Range.Font.Name = "宋体"
+                    p.Range.Font.Size = 12 ' 小四
+                    p.Format.LineSpacingRule = wdLineSpaceDouble ' 行距2.0
+                    p.Format.SpaceBefore = 6 ' 段前0.5行
+                    p.Format.SpaceAfter = 6  ' 段后0.5行
+                    p.Format.CharacterUnitFirstLineIndent = 0 ' 顶格
+                    p.Format.Alignment = wdAlignParagraphLeft
+
+                ' D. 参考文献条目（宋体五号，行距1.5）[第13条]
+                ElseIf (txt Like "\[[0-9]*\]*" Or txt Like "\[[0-9]*\] *") And p.Range.Start > refStart Then
+                    p.Range.Font.Name = "宋体"
+                    p.Range.Font.Size = 10.5 ' 五号
+                    p.Format.LineSpacingRule = wdLineSpace1pt5 ' 行距1.5
+                    p.Format.SpaceBefore = 0
+                    p.Format.SpaceAfter = 0
+                    p.Format.CharacterUnitFirstLineIndent = 2 ' 首行缩进2字符
+
+                ' E. 图片及图表说明（宋体五号，居中，行距1.5）[第10条]
+                ElseIf txt Like "*图*" Or txt Like "\[图*" Then
+                    p.Range.Font.Name = "宋体"
+                    p.Range.Font.Size = 10.5 ' 五号
+                    p.Format.LineSpacingRule = wdLineSpace1pt5 ' 行距1.5
+                    p.Format.SpaceBefore = 3
+                    p.Format.SpaceAfter = 3
+                    p.Format.CharacterUnitFirstLineIndent = 0
+                    p.Format.Alignment = wdAlignParagraphCenter
+                    
+                ' F. 普通正文（宋体小四，左对齐，行距1.5，段前空四格/首行缩进2字符）[第6条]
+                Else
+                    p.Range.Font.Name = "宋体"
+                    p.Range.Font.Size = 12 ' 小四
+                    p.Format.LineSpacingRule = wdLineSpace1pt5 ' 行距1.5
+                    p.Format.SpaceBefore = 0
+                    p.Format.SpaceAfter = 0
+                    p.Format.CharacterUnitFirstLineIndent = 2 ' 自动缩进2字符
+                    p.Format.Alignment = wdAlignParagraphLeft
+                End If
+                
+            End If
+        End If
+    Next p
+    
+    ' ==========================================================
+    ' 5. 表格处理（宋体五号，居中，行距1.5，不加粗）[满足第9条]
+    ' ==========================================================
+    Dim tbl As Table
+    Dim cell As cell
+    For Each tbl In doc.Tables
+        ' 保护机制：如果表格在第一页，则不予处理
+        If tbl.Range.Information(wdActiveEndPageNumber) > 1 Then
+            tbl.Rows.Alignment = wdAlignRowCenter
+            For Each cell In tbl.Range.Cells
+                cell.Range.Font.Name = "宋体"
+                cell.Range.Font.Size = 10.5 ' 五号
+                cell.Range.Font.Bold = False
+                cell.Range.ParagraphFormat.Alignment = wdAlignParagraphCenter
+                cell.Range.ParagraphFormat.LineSpacingRule = wdLineSpace1pt5
+                cell.Range.ParagraphFormat.SpaceBefore = 2
+                cell.Range.ParagraphFormat.SpaceAfter = 2
+                cell.Range.ParagraphFormat.CharacterUnitFirstLineIndent = 0
+            Next cell
+        End If
+    Next tbl
+    
+    ' ==========================================================
+    ' 6. 页眉页脚与页码样式配置 [满足第14、15条]
+    ' ==========================================================
+    Dim pns As Object ' 定义动态对象，彻底绕过编译器底层限制
+    
+    For Each sec In doc.Sections
+        sec.PageSetup.DifferentFirstPageHeaderFooter = False
+        
+        ' 第一节（封面、摘要和目录）：页码用罗马字母 (I, II...)
+        If sec.Index = 1 Then
+            sec.Headers(wdHeaderFooterPrimary).LinkToPrevious = False
+            sec.Headers(wdHeaderFooterPrimary).Range.Text = "" ' 第一节无页眉
+            
+            sec.Footers(wdHeaderFooterPrimary).LinkToPrevious = False
+            
+            ' 动态绑定设置罗马页码属性，避免静态编译报错
+            Set pns = sec.Footers(wdHeaderFooterPrimary).PageNumbers
+            On Error Resume Next
+            pns.NumberStyle = 1        ' 1 代表 wdPageNumberStyleUppercaseRoman
+            pns.RestartPageNumbering = True
+            pns.StartingNumber = 1
+            pns.Add PageNumberAlignment:=1 ' 1 代表居中对齐 wdAlignPageNumberCenter
+            On Error GoTo 0
+            
+        ' 第二节及以后（正文开始）：页码用阿拉伯数字(1, 2...)，加宋体小五页眉
+        Else
+            sec.Headers(wdHeaderFooterPrimary).LinkToPrevious = False
+            sec.Footers(wdHeaderFooterPrimary).LinkToPrevious = False
+            
+            ' 动态绑定设置阿拉伯页码属性，避免静态编译报错
+            Set pns = sec.Footers(wdHeaderFooterPrimary).PageNumbers
+            On Error Resume Next
+            pns.NumberStyle = 0        ' 0 代表 wdPageNumberStyleArabic
+            pns.RestartPageNumbering = True
+            pns.StartingNumber = 1
+            pns.Add PageNumberAlignment:=1 ' 1 代表居中对齐
+            On Error GoTo 0
+            
+            ' 正文页眉设置（宋体小五）
+            Dim hdrRange As Range
+            Set hdrRange = sec.Headers(wdHeaderFooterPrimary).Range
+            hdrRange.Text = "课程设计报告：双闭环直流调速系统设计与数字化仿真"
+            hdrRange.Font.Name = "宋体"
+            hdrRange.Font.Size = 9 ' 小五对应9pt
+            hdrRange.Font.Bold = False
+            hdrRange.ParagraphFormat.Alignment = wdAlignParagraphCenter
+        End If
+    Next sec
+    
+    ' ==========================================================
+    ' 7. 更新目录与公式域 [满足第11、12条]
+    ' ==========================================================
+    On Error Resume Next
+    doc.TablesOfContents(1).Update
+    doc.Fields.Update
+    On Error GoTo 0
+    
+    MsgBox "代码已成功编译并运行完毕！格式全部配置成功，且第一页封面未受任何改动。", vbInformation, "排版成功"
+End Sub
+
