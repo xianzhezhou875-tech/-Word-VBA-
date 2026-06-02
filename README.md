@@ -20,3 +20,64 @@
 第四步：将完整的 VBA 脚本代码复制并粘贴到右侧新弹出的空白代码编辑器中。
 第五步：按下键盘上的 F5 键，或者点击工具栏上绿色的“运行”三角形图标。
 第六步：等待数秒后，当弹出“代码运行顺利！所有格式排版已应用完毕”的提示框时，关闭 VBA 窗口即可。
+
+# IoT Intelligent Operations & Maintenance Agent (IoT-O&M Agent)
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+[![LangGraph](https://img.shields.io/badge/Framework-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
+[![Docker](https://img.shields.io/badge/Docker-Supported-blue.svg)](https://www.docker.com/)
+[![License-MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
+An industrial-grade AI Agent designed to solve the pain points of Internet of Things (IoT) equipment operations and maintenance. It features long/short-term memory management, a dual-engine hybrid knowledge retrieval layer, and a runtime hallucination self-auditing mechanism to automate fault diagnosis and maintenance plan generation.
+
+---
+
+## 🌟 Key Features
+
+- **Advanced Topology Execution (LangGraph)**: Built on a ReAct loop mechanism leveraging multi-node state graphs for intent classification, autonomous tool triggering, and recursive rewriting.
+- **Dual-Engine Knowledge Stratum**: 
+  - **Unstructured RAG**: High-precision semantic searching inside equipment maintenance manuals using **ChromaDB**.
+  - **Structured Data Query**: Correlating real-time IoT device metrics via **SQLite** utilizing complex relational `JOIN` statements.
+- **Robustness & Hallucination Mitigation**: Integrated `Runtime Auditor` node to validate factual grounding before rendering the response, reducing LLM hallucination.
+- **Enterprise-Grade Observability**: Full-lifecycle tracing using **LangSmith** alongside rigorous Python standard asynchronous exception handling.
+
+---
+
+## 🏗️ System Architecture
+
+The following diagram illustrates the Agent's workflow topology and data routing, powered by **LangGraph**:
+
+```mermaid
+graph TD
+    %% Base Styling
+    classDef stateNode fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef dbNode fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef toolNode fill:#bfb,stroke:#333,stroke-width:2px;
+
+    %% Workflow Nodes
+    Start([User Query / Alert Trigger]) --> StateInit[Initialize Agent State]
+    StateInit --> Supervisor{Intent Route}
+    
+    %% Router Decisions
+    Supervisor -->|Manual Lookup| RAG_Node[ChromaDB RAG Node]:::stateNode
+    Supervisor -->|Live Status| SQL_Node[SQLite Metric Node]:::stateNode
+    
+    %% Vector & Relational DBs
+    RAG_Node <--> DB_Chroma[(ChromaDB Vector Store)]:::dbNode
+    SQL_Node <--> DB_SQL[(SQLite Relational DB)]:::dbNode
+    
+    %% Execution & Review Loop
+    RAG_Node --> Auditor{Runtime Auditor}
+    SQL_Node --> Auditor
+    
+    Auditor -->|Hallucination Detected| RewriteNode[Recursive Rewrite Node]:::stateNode
+    RewriteNode --> Supervisor
+    
+    Auditor -->|Verified & Grounded| Response[Format Actionable Solution]
+    
+    %% Monitoring
+    Response --> LangSmith([LangSmith Tracing & Logging])
+
+    %% Node Types Legend
+    style Supervisor fill:#ffb,stroke:#333,stroke-width:2px;
+    style Auditor fill:#ffb,stroke:#333,stroke-width:2px;
